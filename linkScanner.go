@@ -35,7 +35,14 @@ func (ls *LinkScanner) getLinkScannerSession() (ScannerSession, error) {
 
 	urls := make(map[string][]string, 1000)
 
-	if ls.Dir != "" {
+	if ls.FileName != "" {
+		files, err = ls.readFileByPattern(ls.FileName)
+		if err != nil {
+			fmt.Println(err)
+		}
+		urls[ls.FileName] = files
+		numFiles = 1
+	} else if ls.Dir != "" {
 		files, err = ls.readDirByFileType()
 		if err != nil {
 			return ScannerSession{}, err
