@@ -30,9 +30,9 @@ func getHead(c chan Link, l Link) {
 }
 
 func main() {
-	dir := flag.String("dir", "", "If given, searches every file for a match.")
-	filename := flag.String("filename", "", "If given a directory, will only search by this filetype.  Defaults to `md`.")
-	filetype := flag.String("filetype", ".md", "If given a directory, will only search by this filetype.  Defaults to `md`.")
+	dir := flag.String("dir", ".", "Optional.  Searches every file in the directory for a match.  Non-recursive.")
+	filename := flag.String("filename", "", "Optional.  Takes precedence over directory searches.")
+	filetype := flag.String("filetype", ".md", "Only searches files of this type.")
 	flag.Parse()
 
 	urlIgnore := `\.onion|example\.com|<YOUR_DOMAIN>`
