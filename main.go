@@ -35,7 +35,7 @@ func main() {
 	filetype := flag.String("filetype", ".md", "Only searches files of this type.  Include the period, i.e., `.html`")
 	flag.Parse()
 
-	urlIgnore := `\.onion|example\.com|<YOUR_DOMAIN>`
+	urlIgnore := `\.onion|example\.com`
 
 	ls := LinkScanner{
 		Dir:      *dir,
