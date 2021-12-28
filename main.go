@@ -14,6 +14,7 @@ func getHead(c chan Link, l Link) {
 	_, err := url.ParseRequestURI(l.URL)
 	if err != nil {
 		l.StatusCode = -1
+		l.Error = err
 		c <- l
 		return
 	}
@@ -21,6 +22,7 @@ func getHead(c chan Link, l Link) {
 	resp, err := http.Head(l.URL)
 	if err != nil {
 		l.StatusCode = 401
+		l.Error = err
 		c <- l
 		return
 	}
@@ -49,24 +51,30 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("[INFO] Number of files scanned    = %d\n", ss.TotalFiles)
+	fmt.Printf("[INFO] Number of pattern matches  = %d\n", len(ss.Links))
+	fmt.Printf("[INFO] Number of pattern failures = %d\n", len(ss.Failed))
+	fmt.Printf("[INFO] Ignore pattern list:\n%s\n", strings.Join(strings.Split(urlIgnore, "|"), "\n"))
+
+	ignored := 0
 	if len(ss.Failed) > 0 {
-		split := strings.Split(urlIgnore, "|")
-		fmt.Printf("[FAILED] Number of failures = %d\n", len(ss.Failed))
-		fmt.Println("Ignored all URLs that contained any of the following:")
-		fmt.Println(strings.Join(split, "\n"))
 		re := regexp.MustCompile(urlIgnore)
 		for _, link := range ss.Failed {
 			if re.MatchString(link.URL) {
+				ignored += 1
 				continue
 			}
 			if link.StatusCode == 401 {
-				fmt.Printf("\n(%d) %s\tOwner: %s", link.StatusCode, link.URL, link.Owner)
+				fmt.Printf("\n(%d)   (Link)  %s\n\t(Error) %s\n\t(Owner) %s\n", link.StatusCode, link.URL, link.Error, link.Owner)
 			}
 		}
-		// Add newline so it's not on the same line as the cursor.
-		fmt.Println()
-		os.Exit(1)
+
+		fmt.Printf("[INFO] Number ignored = %d\n", ignored)
+
+		if ignored != len(ss.Failed) {
+			os.Exit(1)
+		}
 	} else {
-		fmt.Println("No failures.")
+		fmt.Println("[SUCCESS] No failures.")
 	}
 }

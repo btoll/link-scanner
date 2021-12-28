@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 type LinkScanner struct {
@@ -18,6 +18,7 @@ type Link struct {
 	Owner      string
 	URL        string
 	StatusCode int
+	Error      error
 }
 
 type ScannerSession struct {
@@ -39,7 +40,7 @@ func (ls *LinkScanner) getLinkScannerSession() (ScannerSession, error) {
 	if ls.FileName != "" {
 		files, err = ls.readFileByPattern(ls.FileName)
 		if err != nil {
-			fmt.Println(err)
+			return ScannerSession{}, err
 		}
 		urls[ls.FileName] = files
 		numFiles = 1
@@ -119,11 +120,7 @@ func (ls *LinkScanner) readDirByFileType() ([]string, error) {
 func (ls *LinkScanner) readFileByPattern(filename string) ([]string, error) {
 	var filenames []string
 
-	absFilename, err := filepath.Abs(filename)
-	if err != nil {
-		return filenames, err
-	}
-	readFile, err := os.Open(absFilename)
+	readFile, err := os.Open(filename)
 	if err != nil {
 		return filenames, err
 	}
@@ -131,7 +128,7 @@ func (ls *LinkScanner) readFileByPattern(filename string) ([]string, error) {
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)
 
-	re := regexp.MustCompile(`(?:https?:\/\/.*\.[^\W)'"][\w\-/?=]*)`)
+	re := regexp.MustCompile(`(?:https?:\/\/[^<>].*\.[^\W)'"<>][\w\-/?=]*)`)
 	for fileScanner.Scan() {
 		text := fileScanner.Text()
 		if re.MatchString(text) {
