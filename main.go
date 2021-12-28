@@ -4,20 +4,20 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
-	"regexp"
 	"strings"
 )
 
 func getHead(c chan Link, l Link) {
-	_, err := url.ParseRequestURI(l.URL)
-	if err != nil {
-		l.StatusCode = -1
-		l.Error = err
-		c <- l
-		return
-	}
+	/*
+		_, err := url.ParseRequestURI(l.URL)
+		if err != nil {
+			l.StatusCode = -1
+			l.Error = err
+			c <- l
+			return
+		}
+	*/
 
 	resp, err := http.Head(l.URL)
 	if err != nil {
@@ -37,12 +37,11 @@ func main() {
 	filetype := flag.String("filetype", ".md", "Only searches files of this type.  Include the period, i.e., `.html`")
 	flag.Parse()
 
-	urlIgnore := `\.onion|example\.com`
-
 	ls := LinkScanner{
-		Dir:      *dir,
-		FileName: *filename,
-		FileType: *filetype,
+		Dir:         *dir,
+		FileName:    *filename,
+		FileType:    *filetype,
+		SkipPattern: `\.onion|example\.com`,
 	}
 
 	ss, err := ls.getLinkScannerSession()
@@ -51,27 +50,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("[INFO] Number of files scanned    = %d\n", ss.TotalFiles)
-	fmt.Printf("[INFO] Number of pattern matches  = %d\n", len(ss.Links))
-	fmt.Printf("[INFO] Number of pattern failures = %d\n", len(ss.Failed))
-	fmt.Printf("[INFO] Ignore pattern list:\n%s\n", strings.Join(strings.Split(urlIgnore, "|"), "\n"))
+	fmt.Printf("[INFO] Number of files scanned = %d\n", ss.TotalFiles)
+	fmt.Printf("[INFO] Number of links matched = %d\n", len(ss.Links))
+	fmt.Printf("[INFO] Links failed  = %d\n", len(ss.Failed))
+	fmt.Printf("[INFO] Links skipped = %d\n", len(ss.Skipped))
+	fmt.Printf("[INFO] Skip pattern list:\n%s\n", strings.Join(strings.Split(ls.SkipPattern, "|"), "\n"))
 
-	ignored := 0
-	if len(ss.Failed) > 0 {
-		re := regexp.MustCompile(urlIgnore)
-		for _, link := range ss.Failed {
-			if re.MatchString(link.URL) {
-				ignored += 1
-				continue
-			}
-			if link.StatusCode == 401 {
+	/*
+		if len(ss.Skipped) > 0 {
+			for _, link := range ss.Skipped {
 				fmt.Printf("\n(%d)   (Link)  %s\n\t(Error) %s\n\t(Owner) %s\n", link.StatusCode, link.URL, link.Error, link.Owner)
 			}
 		}
+	*/
 
-		fmt.Printf("[INFO] Number ignored = %d\n", ignored)
+	if len(ss.Failed) > 0 {
+		for _, link := range ss.Failed {
+			fmt.Printf("\n(%d)   (Link)  %s\n\t(Error) %s\n\t(Owner) %s\n", link.StatusCode, link.URL, link.Error, link.Owner)
+		}
 
-		if ignored != len(ss.Failed) {
+		if len(ss.Skipped) != len(ss.Failed) {
 			os.Exit(1)
 		}
 	} else {

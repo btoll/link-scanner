@@ -8,10 +8,12 @@ import (
 	"strings"
 )
 
+/* the program */
 type LinkScanner struct {
-	Dir      string
-	FileName string
-	FileType string
+	Dir         string
+	FileName    string
+	FileType    string
+	SkipPattern string
 }
 
 type Link struct {
@@ -21,17 +23,20 @@ type Link struct {
 	Error      error
 }
 
+/* the results of the program */
 type ScannerSession struct {
 	TotalFiles int
 	Tree       map[string][]Link
 	Links      []Link
 	Failed     []Link
+	Skipped    []Link
 }
 
 func (ls *LinkScanner) getLinkScannerSession() (ScannerSession, error) {
 	var files []string
 	var links []Link
 	var failed []Link
+	var skipped []Link
 	var err error
 	var numFiles int
 
@@ -78,12 +83,17 @@ func (ls *LinkScanner) getLinkScannerSession() (ScannerSession, error) {
 		}
 	}
 
+	re := regexp.MustCompile(ls.SkipPattern)
 	for _, v := range urls {
 		for i := 0; i < len(v); i++ {
 			link := <-c
 			links = append(links, link)
 			if link.StatusCode == 401 {
-				failed = append(failed, link)
+				if re.MatchString(link.URL) {
+					skipped = append(skipped, link)
+				} else {
+					failed = append(failed, link)
+				}
 			}
 		}
 	}
@@ -92,6 +102,7 @@ func (ls *LinkScanner) getLinkScannerSession() (ScannerSession, error) {
 		TotalFiles: numFiles,
 		Links:      links,
 		Failed:     failed,
+		Skipped:    skipped,
 	}, err
 }
 
