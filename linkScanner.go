@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 )
 
@@ -103,11 +104,11 @@ func (ls *LinkScanner) readDirByFileType() ([]string, error) {
 
 	for _, dirEntry := range dirEntries {
 		if !dirEntry.IsDir() {
-			name := dirEntry.Name()
-			fileExtension := len(name) - len(ls.FileType)
+			filename := dirEntry.Name()
+			fileExtension := len(filename) - len(ls.FileType)
 
-			if name[fileExtension:] == ls.FileType {
-				files = append(files, name)
+			if filename[fileExtension:] == ls.FileType {
+				files = append(files, fmt.Sprintf("%s/%s", strings.TrimSuffix(ls.Dir, "/"), filename))
 			}
 		}
 	}
@@ -118,7 +119,11 @@ func (ls *LinkScanner) readDirByFileType() ([]string, error) {
 func (ls *LinkScanner) readFileByPattern(filename string) ([]string, error) {
 	var filenames []string
 
-	readFile, err := os.Open(fmt.Sprintf("%s/%s", ls.Dir, filename))
+	absFilename, err := filepath.Abs(filename)
+	if err != nil {
+		return filenames, err
+	}
+	readFile, err := os.Open(absFilename)
 	if err != nil {
 		return filenames, err
 	}
