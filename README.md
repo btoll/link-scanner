@@ -1,13 +1,15 @@
 # LinkScanner
 
 ```
-Usage of ./link-scanner:
+Usage of link-scanner:
   -dir string
-        Optional.  Searches every file in the directory for a match.  Non-recursive. (default ".")
+        Optional.  Searches every file in the directory for a match.  Non-recursive.
   -filename string
         Optional.  Takes precedence over directory searches.
-  -filetype string
-        Only searches files of this type. (default ".md")
+  -filetype .html
+        Only searches files of this type.  Include the period, i.e., .html (default ".md")
+  -q    Optional.  Turns on quiet mode.
+  -v    Optional.  Turns on verbose mode.
 ```
 
 ## Git `pre-commit` Hook
@@ -33,14 +35,4 @@ Finally, add the hook as a local config:
 ```
 git config --local --add hooks.pre-commit.hook link-scanner.sh
 ```
-
-## TODO
-
-- Add verbose flag.
-    + Will show what files are ignored.
-- Add quiet flag.
-    + Will suppress the `FAILED` line with number of failures.
-    + Will enable easier `stdout` parsing by subsequent programs in a pipeline.
-- Defaults to only showing failures.  This is determined to be `401`s.  Let user decide.
-- Add color?
 
