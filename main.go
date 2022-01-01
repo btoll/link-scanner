@@ -31,6 +31,14 @@ func getHead(c chan Link, l Link) {
 	c <- l
 }
 
+func printLinks(links []Link) {
+	if len(links) > 0 {
+		for _, link := range links {
+			fmt.Printf("[DEBUG] - %s\n", link.URL)
+		}
+	}
+}
+
 func main() {
 	dir := flag.String("dir", "", "Optional.  Searches every file in the directory for a match.  Non-recursive.")
 	filename := flag.String("filename", "", "Optional.  Takes precedence over directory searches.")
@@ -60,19 +68,29 @@ func main() {
 	}
 
 	if *verbose {
-		fmt.Println("\n[DEBUG] -----------------------------------------------------------------------------")
-		l := strings.Split(ls.SkipPattern, "|")
-		s := strings.Join(l, ",")
-		fmt.Printf("[DEBUG] Skip pattern list: %s\n", strings.ReplaceAll(s, "\\", ""))
-		fmt.Println("[DEBUG] The following files were skipped because of a match in the skip pattern list:")
-		fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
-		if len(ss.Skipped) > 0 {
-			for _, link := range ss.Skipped {
-				fmt.Printf("[DEBUG] - %s\n", link.URL)
-			}
+		if len(ss.Links) > 0 {
+			fmt.Println("\n[DEBUG] -----------------------------------------------------------------------------")
+			fmt.Println("[DEBUG] Matched links:")
+			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
+			printLinks(ss.Links)
+			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
+		} else {
+			fmt.Println("[DEBUG] No matched links.")
 		}
-		fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
-		fmt.Println()
+
+		if len(ss.Skipped) > 0 {
+			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
+			l := strings.Split(ls.SkipPattern, "|")
+			s := strings.Join(l, ",")
+			fmt.Printf("[DEBUG] Skip pattern list: %s\n", strings.ReplaceAll(s, "\\", ""))
+			fmt.Println("[DEBUG] Skipped links:")
+			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
+			printLinks(ss.Skipped)
+			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
+			fmt.Println()
+		} else {
+			fmt.Println("[DEBUG] No skipped links.")
+		}
 	}
 
 	if len(ss.Failed) > 0 {
