@@ -139,7 +139,7 @@ func (ls *LinkScanner) readFileByPattern(filename string) ([]string, error) {
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)
 
-	re := regexp.MustCompile(`(?:https?:\/\/[^<>].*\.[^\W)'"<>][\w\-/?=]*)`)
+	re := regexp.MustCompile(`(?:https?:\/\/[^<>].*\.[^\W\s)"<>]+[\w\.,$'%\-/?=]*?)$`)
 	for fileScanner.Scan() {
 		text := fileScanner.Text()
 		if re.MatchString(text) {

@@ -13,9 +13,11 @@ var statusCodes = map[int]string{
 	401: "401 Unauthorized",
 	403: "403 Forbidden",
 	404: "404 Not Found",
+	405: "405 Method Not Allowed",
 	500: "500 Internal Server Error",
 	501: "501 Not Implemented",
 	502: "502 Bad Gateway",
+	503: "503 Service Unavailable",
 }
 
 func getHead(c chan Link, l Link) {
@@ -109,7 +111,7 @@ func main() {
 				var e string
 				var ok bool
 				if e, ok = statusCodes[link.StatusCode]; !ok {
-					e = "Unknown error"
+					e = fmt.Sprintf("%d Unknown error", link.StatusCode)
 				}
 				fmt.Printf("\n(Link)  %s\n(Error) %s\n(Owner) %s\n", link.URL, e, link.Owner)
 			}
