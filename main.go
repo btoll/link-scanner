@@ -8,6 +8,16 @@ import (
 	"strings"
 )
 
+var statusCodes = map[int]string{
+	400: "400 Bad Request",
+	401: "401 Unauthorized",
+	403: "403 Forbidden",
+	404: "404 Not Found",
+	500: "500 Internal Server Error",
+	501: "501 Not Implemented",
+	502: "502 Bad Gateway",
+}
+
 func getHead(c chan Link, l Link) {
 	/*
 		_, err := url.ParseRequestURI(l.URL)
@@ -21,7 +31,7 @@ func getHead(c chan Link, l Link) {
 
 	resp, err := http.Head(l.URL)
 	if err != nil {
-		l.StatusCode = 401
+		l.StatusCode = 400
 		l.Error = err
 		c <- l
 		return
@@ -96,7 +106,12 @@ func main() {
 	if len(ss.Failed) > 0 {
 		if !*quiet {
 			for _, link := range ss.Failed {
-				fmt.Printf("\n(%d)   (Link)  %s\n\t(Error) %s\n\t(Owner) %s\n", link.StatusCode, link.URL, link.Error, link.Owner)
+				var e string
+				var ok bool
+				if e, ok = statusCodes[link.StatusCode]; !ok {
+					e = "Unknown error"
+				}
+				fmt.Printf("\n(Link)  %s\n(Error) %s\n(Owner) %s\n", link.URL, e, link.Owner)
 			}
 		}
 

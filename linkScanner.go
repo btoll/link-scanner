@@ -88,7 +88,7 @@ func (ls *LinkScanner) getLinkScannerSession() (ScannerSession, error) {
 		for i := 0; i < len(v); i++ {
 			link := <-c
 			links = append(links, link)
-			if link.StatusCode == 401 {
+			if !(link.StatusCode >= 200 && link.StatusCode < 400) {
 				if re.MatchString(link.URL) {
 					skipped = append(skipped, link)
 				} else {
@@ -133,7 +133,7 @@ func (ls *LinkScanner) readFileByPattern(filename string) ([]string, error) {
 
 	readFile, err := os.Open(filename)
 	if err != nil {
-		return filenames, err
+		return nil, err
 	}
 
 	fileScanner := bufio.NewScanner(readFile)
