@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -14,6 +15,7 @@ type LinkScanner struct {
 	FileName    string
 	FileType    string
 	SkipPattern string
+	Header      http.Header
 }
 
 type Link struct {
@@ -79,7 +81,7 @@ func (ls *LinkScanner) getLinkScannerSession() (ScannerSession, error) {
 				Owner: filename,
 				URL:   url,
 			}
-			go getHead(c, l)
+			go getHead(c, l, ls.Header)
 		}
 	}
 
