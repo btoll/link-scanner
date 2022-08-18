@@ -11,9 +11,11 @@ import (
 
 /* the program */
 type LinkScanner struct {
-	Dir         string
-	FileName    string
-	FileType    string
+	Dir       string
+	FileName  string
+	FileType  string
+	LinkRegex string
+	//	SkipCode    string
 	SkipPattern string
 	Header      http.Header
 }
@@ -141,7 +143,7 @@ func (ls *LinkScanner) readFileByPattern(filename string) ([]string, error) {
 	fileScanner := bufio.NewScanner(readFile)
 	fileScanner.Split(bufio.ScanLines)
 
-	re := regexp.MustCompile(`(?:https?:\/\/[^<>].*\.[^\W\s)"<>]+[\w\.,$'%\-/?=]*?)$`)
+	re := regexp.MustCompile(ls.LinkRegex)
 	for fileScanner.Scan() {
 		text := fileScanner.Text()
 		if re.MatchString(text) {

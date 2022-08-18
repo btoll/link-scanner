@@ -85,6 +85,9 @@ func main() {
 	dir := flag.String("dir", "", "Optional.  Searches every file in the directory for a match.  Non-recursive.")
 	filename := flag.String("filename", "", "Optional.  Takes precedence over directory searches.")
 	filetype := flag.String("filetype", ".md", "Only searches files of this type.  Include the period, i.e., `.html`")
+	regex := flag.String("regex", `(?:https?:\/\/[^<>].*\.[^\W\s)"<>]+[\w\.,$'%\-/?=]*?)$`, "Optional.  The search pattern (regex) used when gathering the links in an article.")
+//	skipCode := flag.String("skipCode", `\.onion|example\.com`, "Optional.  Will skip any gathered links matching this pattern.")
+	skipPattern := flag.String("skipPattern", `\.onion|example\.com`, "Optional.  Will skip any gathered links matching this pattern.")
 	header := flag.String("header", "", "Optional.  Takes comma-delimited pairs of key:value")
 	verbose := flag.Bool("v", false, "Optional.  Turns on verbose mode.")
 	quiet := flag.Bool("q", false, "Optional.  Turns on quiet mode.")
@@ -95,7 +98,9 @@ func main() {
 		Dir:         *dir,
 		FileName:    *filename,
 		FileType:    *filetype,
-		SkipPattern: `\.onion|example\.com`,
+		LinkRegex:   *regex,
+//		SkipCode:    *skipCode,
+		SkipPattern: *skipPattern,
 		Header:      h,
 	}
 
@@ -110,7 +115,11 @@ func main() {
 		fmt.Printf("[INFO] Number of links matched = %d\n", len(ss.Links))
 		fmt.Printf("[INFO] Links skipped = %d\n", len(ss.Skipped))
 		fmt.Printf("[INFO] Links failed  = %d\n\n", len(ss.Failed))
-		fmt.Println("[INFO] Request headers")
+
+		fmt.Printf("[INFO] Link regex = %s\n", ls.LinkRegex)
+		fmt.Printf("[INFO] Skip pattern = %s\n\n", ls.SkipPattern)
+
+		fmt.Println("[INFO] HTTP Request headers:")
 		for k, v := range h {
 			fmt.Printf("\t%s: %s\n", k, v)
 		}
