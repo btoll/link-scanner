@@ -53,7 +53,7 @@ func getHead(c chan Link, l Link, headers http.Header) {
 func printLinks(links []Link) {
 	if len(links) > 0 {
 		for _, link := range links {
-			fmt.Printf("[DEBUG] - %s\n", link.URL)
+			fmt.Printf("[LINK] - %s\n", link.URL)
 		}
 	}
 }
@@ -86,7 +86,7 @@ func main() {
 	filename := flag.String("filename", "", "Optional.  Takes precedence over directory searches.")
 	filetype := flag.String("filetype", ".md", "Only searches files of this type.  Include the period, i.e., `.html`")
 	regex := flag.String("regex", `(?:https?:\/\/[^<>].*\.[^\W\s)"<>]+[\w\.,$'%\-/?=]*?)$`, "Optional.  The search pattern (regex) used when gathering the links in an article.")
-//	skipCode := flag.String("skipCode", `\.onion|example\.com`, "Optional.  Will skip any gathered links matching this pattern.")
+	//	skipCode := flag.String("skipCode", `\.onion|example\.com`, "Optional.  Will skip any gathered links matching this pattern.")
 	skipPattern := flag.String("skipPattern", `\.onion|example\.com`, "Optional.  Will skip any gathered links matching this pattern.")
 	header := flag.String("header", "", "Optional.  Takes comma-delimited pairs of key:value")
 	verbose := flag.Bool("v", false, "Optional.  Turns on verbose mode.")
@@ -95,11 +95,11 @@ func main() {
 
 	h := getHeaders(*header)
 	ls := LinkScanner{
-		Dir:         *dir,
-		FileName:    *filename,
-		FileType:    *filetype,
-		LinkRegex:   *regex,
-//		SkipCode:    *skipCode,
+		Dir:       *dir,
+		FileName:  *filename,
+		FileType:  *filetype,
+		LinkRegex: *regex,
+		//		SkipCode:    *skipCode,
 		SkipPattern: *skipPattern,
 		Header:      h,
 	}
@@ -168,7 +168,7 @@ func main() {
 		}
 	} else {
 		if !*quiet {
-			fmt.Println("[SUCCESS] No failures.")
+			fmt.Println("\n[SUCCESS] No failures.")
 		}
 	}
 }
