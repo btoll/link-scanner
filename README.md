@@ -1,5 +1,7 @@
 # link-scanner
 
+[Read the article] that explains everything!
+
 ```
 Usage of link-scanner:
   -dir string
@@ -11,4 +13,6 @@ Usage of link-scanner:
   -q    Optional.  Turns on quiet mode.
   -v    Optional.  Turns on verbose mode.
 ```
+
+[Read the article]: https://benjamintoll.com/2022/08/15/on-testing-website-links/
 
