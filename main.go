@@ -1,174 +1,228 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"log"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
+	"sync"
+
+	"golang.org/x/net/html"
 )
 
-var statusCodes = map[int]string{
-	400: "400 Bad Request",
-	401: "401 Unauthorized",
-	403: "403 Forbidden",
-	404: "404 Not Found",
-	405: "405 Method Not Allowed",
-	429: "429 Too Many Requests",
-	500: "500 Internal Server Error",
-	501: "501 Not Implemented",
-	502: "502 Bad Gateway",
-	503: "503 Service Unavailable",
+var (
+	numWorkers int
+	tagName    string
+	targetUrl  string
+	quiet      bool
+
+	// TODO: Put logging behind a -debug or -verbose flag.
+	logger *slog.Logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
+)
+
+type Links map[int][]string
+type Target map[string]any
+type Targets []Target
+
+type Task struct {
+	url string
+	m   *sync.Map
 }
 
-func getHead(c chan Link, l Link, headers http.Header) {
-	/*
-		_, err := url.ParseRequestURI(l.URL)
+//func boolToInt(b bool) int {
+//	if !b {
+//		return 0
+//	}
+//	return 1
+//}
+
+func createWorkers(wg *sync.WaitGroup, numWorkers int) chan Task {
+	tasks := make(chan Task, numWorkers)
+	for i := 0; i < numWorkers; i += 1 {
+		wg.Go(func() {
+			worker(tasks)
+		})
+	}
+	return tasks
+}
+
+func getFileInput(arg string) (io.ReadCloser, error) {
+	after, found := strings.CutPrefix(arg, "/dev/fd/")
+	if found {
+		if fd, err := strconv.Atoi(after); err == nil {
+			file := os.NewFile(uintptr(fd), "")
+			if _, err = file.Stat(); err == nil {
+				return file, nil
+			}
+		}
+	}
+	if arg == "-" {
+		return io.NopCloser(os.Stdin), nil
+	}
+	return os.Open(arg)
+}
+
+func getURLs(url string) []string {
+	var allURLs []string
+	if url != "" {
+		allURLs = []string{url}
+	} else if len(os.Args) > 1 {
+		reader, err := getFileInput(flag.Args()[0])
 		if err != nil {
-			l.StatusCode = -1
-			l.Error = err
-			c <- l
-			return
+			log.Fatal(err)
 		}
-	*/
-
-	client := http.Client{}
-	req, err := http.NewRequest("HEAD", l.URL, nil)
-	if err != nil {
-		panic(err)
+		defer reader.Close()
+		scanner := bufio.NewScanner(reader)
+		for scanner.Scan() {
+			allURLs = append(allURLs, scanner.Text())
+		}
 	}
-	req.Header = headers
-	resp, err := client.Do(req)
-	if err != nil {
-		l.StatusCode = 400
-		l.Error = err
-		c <- l
-		return
-	}
-
-	l.StatusCode = resp.StatusCode
-	c <- l
+	return allURLs
 }
 
-func printLinks(links []Link) {
-	if len(links) > 0 {
-		for _, link := range links {
-			fmt.Printf("[LINK] - %s\n", link.URL)
+func parseNodes(body io.Reader, tasks chan<- Task, m *sync.Map) {
+	node, err := html.Parse(body)
+	if err != nil {
+		close(tasks)
+		logger.Error("html.Parse failed", "err", err)
+		os.Exit(1)
+	}
+	for n := range node.Descendants() {
+		if n.Data == tagName {
+			for e := range n.Descendants() {
+				for _, a := range e.Attr {
+					if a.Key == "href" {
+						// Validate that it's well-formed.
+						if u, err := url.Parse(a.Val); err == nil && u.Scheme != "" {
+							tasks <- Task{
+								url: a.Val,
+								m:   m,
+							}
+						}
+					}
+				}
+			}
+			close(tasks)
+			break
 		}
 	}
 }
 
-func getHeaders(headers string) http.Header {
-	// Set some sensible defaults.
-	h := http.Header{
-		"Content-Type": {"text/html"},
-		"User-Agent":   {"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0"},
+func processURL(url string) (Target, error) {
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
 	}
-	if len(headers) == 0 {
-		return h
-	}
-	for _, header := range strings.Split(headers, ",") {
-		// Specify the expected split number because a header key value can contain colons,
-		// i.e., a User-Agent value (see default value).
-		v := strings.SplitN(header, ":", 2)
-		if len(v) != 2 {
-			fmt.Println("Bad header values.")
-			os.Exit(1)
+	defer resp.Body.Close()
+
+	target := make(Target)
+	target["target"] = url
+
+	if resp.StatusCode == 200 {
+		var wgWorker sync.WaitGroup
+		m := &sync.Map{}
+		parseNodes(
+			resp.Body,
+			createWorkers(&wgWorker, numWorkers),
+			m,
+		)
+		wgWorker.Wait()
+
+		links := make(Links)
+		m.Range(func(key, value any) bool {
+			uniqueLinks := make(map[string]bool)
+			switch v := value.(type) {
+			case []string:
+				// Deduplicate.
+				// TODO: Let's deduplicate before we get here to make it simpler.
+				for _, url := range v {
+					uniqueLinks[url] = true
+				}
+
+			}
+			k := key.(int)
+			for url := range uniqueLinks {
+				links[k] = append(links[k], url)
+			}
+			return true
+		})
+
+		for _, urls := range links {
+			slices.Sort(urls)
 		}
-		// Header.Set will override previous keys.
-		h.Set(v[0], v[1])
+		target["links"] = links
+	} else {
+		target["links"] = struct{}{}
 	}
-	return h
+	return target, nil
+}
+
+func worker(tasks <-chan Task) {
+	for task := range tasks {
+		// TODO: Allow HTTP verb (HEAD, GET) to be a CLI param.
+		req, err := http.NewRequest(http.MethodHead, task.url, nil)
+		if err != nil {
+			// TODO: Let's have a meaningful error status code here.
+			task.m.Store(-1, []string{task.url})
+			continue
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			// TODO: Let's have a meaningful error status code here.
+			task.m.Store(-2, []string{task.url})
+			continue
+		}
+		actual, loaded := task.m.LoadOrStore(resp.StatusCode, []string{task.url})
+		// TODO: This could still be subject to a race condition.
+		if loaded {
+			// The key already existed so append to the existing slice and store.
+			a := actual.([]string)
+			a = append(a, task.url)
+			task.m.Store(resp.StatusCode, a)
+		}
+	}
 }
 
 func main() {
-	dir := flag.String("dir", "", "Optional.  Searches every file in the directory for a match.  Non-recursive.")
-	filename := flag.String("filename", "", "Optional.  Takes precedence over directory searches.")
-	filetype := flag.String("filetype", ".md", "Only searches files of this type.  Include the period, i.e., `.html`")
-	regex := flag.String("regex", `(?:https?:\/\/[^<>].*\.[^\W\s)"<>]+[\w\.,$'%\-/?=]*?)$`, "Optional.  The search pattern (regex) used when gathering the links in an article.")
-	//	skipCode := flag.String("skipCode", `\.onion|example\.com`, "Optional.  Will skip any gathered links matching this pattern.")
-	skipPattern := flag.String("skipPattern", `\.onion|example\.com`, "Optional.  Will skip any gathered links matching this pattern.")
-	header := flag.String("header", "", "Optional.  Takes comma-delimited pairs of key:value")
-	verbose := flag.Bool("v", false, "Optional.  Turns on verbose mode.")
-	quiet := flag.Bool("q", false, "Optional.  Turns on quiet mode.")
+	flag.StringVar(&tagName, "tagName", "body", "The HTML node to target in which to get the links")
+	flag.StringVar(&targetUrl, "url", "", "The URL to check for valid links.")
+	flag.IntVar(&numWorkers, "w", 3, "The number of workers in the worker pool.")
+	flag.IntVar(&numWorkers, "workers", 20, "The number of workers in the worker pool.")
+	flag.BoolVar(&quiet, "q", false, "Suppress output")
+	flag.BoolVar(&quiet, "quiet", false, "Suppress output")
 	flag.Parse()
 
-	h := getHeaders(*header)
-	ls := LinkScanner{
-		Dir:       *dir,
-		FileName:  *filename,
-		FileType:  *filetype,
-		LinkRegex: *regex,
-		//		SkipCode:    *skipCode,
-		SkipPattern: *skipPattern,
-		Header:      h,
-	}
+	var wgMain sync.WaitGroup
+	allURLs := getURLs(targetUrl)
+	targets := make(Targets, len(allURLs))
 
-	ss, err := ls.getLinkScannerSession()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	if !*quiet {
-		fmt.Printf("[INFO] Number of files scanned = %d\n", ss.TotalFiles)
-		fmt.Printf("[INFO] Number of links matched = %d\n", len(ss.Links))
-		fmt.Printf("[INFO] Links skipped = %d\n", len(ss.Skipped))
-		fmt.Printf("[INFO] Links failed  = %d\n\n", len(ss.Failed))
-
-		fmt.Printf("[INFO] Link regex = %s\n", ls.LinkRegex)
-		fmt.Printf("[INFO] Skip pattern = %s\n\n", ls.SkipPattern)
-
-		fmt.Println("[INFO] HTTP Request headers:")
-		for k, v := range h {
-			fmt.Printf("\t%s: %s\n", k, v)
-		}
-	}
-
-	if *verbose {
-		if len(ss.Links) > 0 {
-			fmt.Println("\n[DEBUG] -----------------------------------------------------------------------------")
-			fmt.Println("[DEBUG] Matched links:")
-			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
-			printLinks(ss.Links)
-			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
-		} else {
-			fmt.Println("[DEBUG] No matched links.")
-		}
-
-		if len(ss.Skipped) > 0 {
-			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
-			l := strings.Split(ls.SkipPattern, "|")
-			s := strings.Join(l, ",")
-			fmt.Printf("[DEBUG] Skip pattern list: %s\n", strings.ReplaceAll(s, "\\", ""))
-			fmt.Println("[DEBUG] Skipped links:")
-			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
-			printLinks(ss.Skipped)
-			fmt.Println("[DEBUG] -----------------------------------------------------------------------------")
-			fmt.Println()
-		} else {
-			fmt.Println("[DEBUG] No skipped links.")
-		}
-	}
-
-	if len(ss.Failed) > 0 {
-		if !*quiet {
-			for _, link := range ss.Failed {
-				var e string
-				var ok bool
-				if e, ok = statusCodes[link.StatusCode]; !ok {
-					e = fmt.Sprintf("%d Unknown error", link.StatusCode)
-				}
-				fmt.Printf("\n(Link)  %s\n(Error) %s\n(Owner) %s\n", link.URL, e, link.Owner)
+	for i, url := range allURLs {
+		wgMain.Go(func() {
+			target, err := processURL(url)
+			if err != nil {
+				logger.Error(err.Error())
+				return
 			}
-		}
+			targets[i] = target
+		})
+	}
 
-		if len(ss.Skipped) != len(ss.Failed) {
-			os.Exit(1)
+	wgMain.Wait()
+
+	if !quiet {
+		b, err := json.Marshal(targets)
+		if err != nil {
+			logger.Error(err.Error())
 		}
-	} else {
-		if !*quiet {
-			fmt.Println("\n[SUCCESS] No failures.")
-		}
+		fmt.Println(string(b))
 	}
 }

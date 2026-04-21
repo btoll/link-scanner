@@ -1,3 +1,5 @@
 module github.com/btoll/link-scanner
 
-go 1.17
+go 1.25.0
+
+require golang.org/x/net v0.53.0
