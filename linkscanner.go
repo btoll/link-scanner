@@ -49,22 +49,27 @@ func getFileInput(arg string) (io.ReadCloser, error) {
 	return os.Open(arg)
 }
 
-func parseNodes(body io.Reader, tasks chan<- Task, m *sync.Map) {
+func parseNodes(body io.Reader, targetUrl string, tasks chan<- Task, m *sync.Map) {
 	node, err := html.Parse(body)
 	if err != nil {
 		close(tasks)
 		//		logger.Error("html.Parse failed", "err", err)
 		os.Exit(1)
 	}
+
+	// We can ignore the error, because if the targetUrl was invalid then
+	// client.Get() would have failed in the caller.
+	baseUrl, _ := url.Parse(targetUrl)
 	for n := range node.Descendants() {
 		if n.Data == TagName {
 			for e := range n.Descendants() {
 				for _, a := range e.Attr {
 					if a.Key == "href" {
-						// Validate that it's well-formed.
-						if u, err := url.Parse(a.Val); err == nil && u.Scheme != "" {
+						if u, err := url.Parse(a.Val); err == nil {
+							// This resolves both absolute and relative URLs.
+							resolved := baseUrl.ResolveReference(u)
 							tasks <- Task{
-								url: a.Val,
+								url: resolved.String(),
 								m:   m,
 							}
 						}
@@ -95,21 +100,22 @@ func GetURLs(url string) []string {
 	return allURLs
 }
 
-func ProcessURL(url string) (Target, error) {
-	resp, err := client.Get(url)
+func ProcessURL(targetUrl string) (Target, error) {
+	resp, err := client.Get(targetUrl)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	target := make(Target)
-	target["target"] = url
+	target["target"] = targetUrl
 
 	if resp.StatusCode == 200 {
 		var wgWorker sync.WaitGroup
 		m := &sync.Map{}
 		parseNodes(
 			resp.Body,
+			targetUrl,
 			CreateWorkers(&wgWorker),
 			m,
 		)
