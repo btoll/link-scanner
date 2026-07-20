@@ -27,7 +27,7 @@ func main() {
 
 	linkscanner.TagName = tagName
 	allURLs := linkscanner.GetURLs(targetUrl)
-	targets := make(linkscanner.Targets, len(allURLs))
+	targets := make([]*linkscanner.ScanResults, len(allURLs))
 
 	var wgMain sync.WaitGroup
 	for i, url := range allURLs {
@@ -43,9 +43,18 @@ func main() {
 	wgMain.Wait()
 
 	if !quiet {
-		b, err := json.Marshal(targets)
-		if err != nil {
-			//			logger.Error(err.Error())
+		var b []byte
+		var err error
+		if len(allURLs) < 2 {
+			b, err = json.Marshal(targets[0])
+			if err != nil {
+				//			logger.Error(err.Error())
+			}
+		} else {
+			b, err = json.Marshal(targets)
+			if err != nil {
+				//			logger.Error(err.Error())
+			}
 		}
 		fmt.Println(string(b))
 	}

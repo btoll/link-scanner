@@ -59,7 +59,7 @@ $ ./link-scanner -url https://go.dev/ref/mem | jq
 From `stdin`:
 
 ```bash
-$ cat << EOF | ./link-scanner . - | jq
+$ cat << EOF | ./link-scanner - | jq
 https://internals-for-interns.com/posts/go-runtime-scheduler/
 https://go.dev/ref/mem
 https://benjamintoll.com/2022/08/15/on-testing-website-links/
@@ -69,6 +69,6 @@ EOF
 As a file descriptor:
 
 ```bash
-$ ./link-scanner . <(cat links.txt) | jq
+$ ./link-scanner <(cat links.txt) | jq
 ```
 

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io"
 	"log"
+	"maps"
 	"net/url"
 	"os"
 	"slices"
@@ -17,9 +18,42 @@ import (
 
 var TagName string = "body"
 
-type Links map[int][]string
-type Target map[string]any
-type Targets []Target
+type Links []string
+type LinkResults map[int]Links
+type ScanResults struct {
+	Target      string      `json:"target"`
+	LinkResults LinkResults `json:"links"`
+}
+
+func (s *ScanResults) GetAllLinks() LinkResults {
+	m := LinkResults{}
+	maps.Copy(m, s.LinkResults)
+	return m
+}
+
+func (s *ScanResults) GetFailures() LinkResults {
+	l := make(LinkResults)
+	for k, v := range s.LinkResults {
+		if !(k >= 200 && k < 400) {
+			l[k] = v
+		}
+	}
+	return l
+}
+
+func (s *ScanResults) GetSuccesses() LinkResults {
+	l := make(LinkResults)
+	for k, v := range s.LinkResults {
+		if k >= 200 && k < 400 {
+			l[k] = v
+		}
+	}
+	return l
+}
+
+func (s *ScanResults) GetTarget() string {
+	return s.Target
+}
 
 type Task struct {
 	url string
@@ -100,15 +134,17 @@ func GetURLs(url string) []string {
 	return allURLs
 }
 
-func ProcessURL(targetUrl string) (Target, error) {
+func ProcessURL(targetUrl string) (*ScanResults, error) {
+	scanResults := &ScanResults{
+		Target:      targetUrl,
+		LinkResults: make(LinkResults),
+	}
+
 	resp, err := client.Get(targetUrl)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	target := make(Target)
-	target["target"] = targetUrl
 
 	if resp.StatusCode == 200 {
 		var wgWorker sync.WaitGroup
@@ -121,7 +157,6 @@ func ProcessURL(targetUrl string) (Target, error) {
 		)
 		wgWorker.Wait()
 
-		links := make(Links)
 		m.Range(func(key, value any) bool {
 			uniqueLinks := make(map[string]bool)
 			switch v := value.(type) {
@@ -135,17 +170,14 @@ func ProcessURL(targetUrl string) (Target, error) {
 			}
 			k := key.(int)
 			for url := range uniqueLinks {
-				links[k] = append(links[k], url)
+				scanResults.LinkResults[k] = append(scanResults.LinkResults[k], url)
 			}
 			return true
 		})
 
-		for _, urls := range links {
+		for _, urls := range scanResults.LinkResults {
 			slices.Sort(urls)
 		}
-		target["links"] = links
-	} else {
-		target["links"] = struct{}{}
 	}
-	return target, nil
+	return scanResults, nil
 }
