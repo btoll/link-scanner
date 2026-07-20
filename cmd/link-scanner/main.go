@@ -25,7 +25,7 @@ func main() {
 	flag.BoolVar(&quiet, "quiet", false, "Suppress output")
 	flag.Parse()
 
-	linkscanner.TagName = tagName
+	linkscanner.SetTagName(tagName)
 	allURLs := linkscanner.GetURLs(targetUrl)
 	targets := make([]*linkscanner.ScanResults, len(allURLs))
 

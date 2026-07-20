@@ -181,3 +181,7 @@ func ProcessURL(targetUrl string) (*ScanResults, error) {
 	}
 	return scanResults, nil
 }
+
+func SetTagName(tagName string) {
+	TagName = tagName
+}
