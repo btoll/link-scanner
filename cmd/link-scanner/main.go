@@ -1,9 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	linkscanner "github.com/btoll/link-scanner"
@@ -18,6 +24,40 @@ var (
 //	logger *slog.Logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
 )
 
+func getFileInput(arg string) (io.ReadCloser, error) {
+	after, found := strings.CutPrefix(arg, "/dev/fd/")
+	if found {
+		if fd, err := strconv.Atoi(after); err == nil {
+			file := os.NewFile(uintptr(fd), "")
+			if _, err = file.Stat(); err == nil {
+				return file, nil
+			}
+		}
+	}
+	if arg == "-" {
+		return io.NopCloser(os.Stdin), nil
+	}
+	return os.Open(arg)
+}
+
+func getURLs(url string) []string {
+	var allURLs []string
+	if url != "" {
+		allURLs = []string{url}
+	} else if len(os.Args) > 1 {
+		reader, err := getFileInput(flag.Args()[0])
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer reader.Close()
+		scanner := bufio.NewScanner(reader)
+		for scanner.Scan() {
+			allURLs = append(allURLs, scanner.Text())
+		}
+	}
+	return allURLs
+}
+
 func main() {
 	flag.StringVar(&tagName, "tagName", "body", "The HTML node to target in which to get the links")
 	flag.StringVar(&targetUrl, "url", "", "The URL to check for valid links.")
@@ -26,7 +66,7 @@ func main() {
 	flag.Parse()
 
 	linkscanner.SetTagName(tagName)
-	allURLs := linkscanner.GetURLs(targetUrl)
+	allURLs := getURLs(targetUrl)
 	targets := make([]*linkscanner.ScanResults, len(allURLs))
 
 	var wgMain sync.WaitGroup

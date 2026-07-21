@@ -1,16 +1,11 @@
 package linkscanner
 
 import (
-	"bufio"
-	"flag"
 	"io"
-	"log"
 	"maps"
 	"net/url"
 	"os"
 	"slices"
-	"strconv"
-	"strings"
 	"sync"
 
 	"golang.org/x/net/html"
@@ -67,22 +62,6 @@ type Task struct {
 //	return 1
 //}
 
-func getFileInput(arg string) (io.ReadCloser, error) {
-	after, found := strings.CutPrefix(arg, "/dev/fd/")
-	if found {
-		if fd, err := strconv.Atoi(after); err == nil {
-			file := os.NewFile(uintptr(fd), "")
-			if _, err = file.Stat(); err == nil {
-				return file, nil
-			}
-		}
-	}
-	if arg == "-" {
-		return io.NopCloser(os.Stdin), nil
-	}
-	return os.Open(arg)
-}
-
 func parseNodes(body io.Reader, targetUrl string, tasks chan<- Task, m *sync.Map) {
 	node, err := html.Parse(body)
 	if err != nil {
@@ -114,24 +93,6 @@ func parseNodes(body io.Reader, targetUrl string, tasks chan<- Task, m *sync.Map
 			break
 		}
 	}
-}
-
-func GetURLs(url string) []string {
-	var allURLs []string
-	if url != "" {
-		allURLs = []string{url}
-	} else if len(os.Args) > 1 {
-		reader, err := getFileInput(flag.Args()[0])
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer reader.Close()
-		scanner := bufio.NewScanner(reader)
-		for scanner.Scan() {
-			allURLs = append(allURLs, scanner.Text())
-		}
-	}
-	return allURLs
 }
 
 func ProcessURL(targetUrl string) (*ScanResults, error) {
