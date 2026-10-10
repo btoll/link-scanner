@@ -1,6 +1,7 @@
 package linkscanner
 
 import (
+	"fmt"
 	"io"
 	"maps"
 	"net/url"
@@ -139,6 +140,8 @@ func ProcessURL(targetUrl string) (*ScanResults, error) {
 		for _, urls := range scanResults.LinkResults {
 			slices.Sort(urls)
 		}
+	} else {
+		return nil, fmt.Errorf("%s return a status of %s, exiting", targetUrl, resp.Status)
 	}
 	return scanResults, nil
 }

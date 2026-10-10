@@ -2,17 +2,12 @@
 
 ```
 Usage of link-scanner:
-  -q    Suppress output
   -quiet
-        Suppress output
+        Suppress output. Useful for CI pipelines that just need an exit value.
   -tagName string
-        The HTML node to target in which to get the links (default "body")
+        The HTML node to target in which to get the links (default "body").
   -url string
         The URL to check for valid links.
-  -w int
-        The number of workers in the worker pool. (default 3)
-  -workers int
-        The number of workers in the worker pool. (default 3)
 ```
 
 ## Examples

@@ -59,10 +59,9 @@ func getURLs(url string) []string {
 }
 
 func main() {
-	flag.StringVar(&tagName, "tagName", "body", "The HTML node to target in which to get the links")
+	flag.StringVar(&tagName, "tagName", "body", "The HTML node to target in which to get the links.")
 	flag.StringVar(&targetUrl, "url", "", "The URL to check for valid links.")
-	flag.BoolVar(&quiet, "q", false, "Suppress output")
-	flag.BoolVar(&quiet, "quiet", false, "Suppress output")
+	flag.BoolVar(&quiet, "quiet", false, "Suppress output. Useful for CI pipelines that just need an exit value.")
 	flag.Parse()
 
 	linkscanner.SetTagName(tagName)
@@ -75,7 +74,7 @@ func main() {
 			target, err := linkscanner.ProcessURL(url)
 			if err != nil {
 				//				logger.Error(err.Error())
-				return
+				log.Fatal(err)
 			}
 			targets[i] = target
 		})
@@ -97,5 +96,11 @@ func main() {
 			}
 		}
 		fmt.Println(string(b))
+	} else {
+		for _, target := range targets {
+			if len(target.GetFailures()) > 0 {
+				os.Exit(1)
+			}
+		}
 	}
 }
