@@ -5,7 +5,6 @@ import (
 	"io"
 	"maps"
 	"net/url"
-	"os"
 	"slices"
 	"sync"
 
@@ -63,12 +62,13 @@ type Task struct {
 //	return 1
 //}
 
-func parseNodes(body io.Reader, targetUrl string, tasks chan<- Task, m *sync.Map) {
+func parseNodes(body io.Reader, targetUrl string, tasks chan<- Task, m *sync.Map) error {
+	defer close(tasks)
+
 	node, err := html.Parse(body)
 	if err != nil {
-		close(tasks)
 		//		logger.Error("html.Parse failed", "err", err)
-		os.Exit(1)
+		return err
 	}
 
 	// We can ignore the error, because if the targetUrl was invalid then
@@ -90,10 +90,10 @@ func parseNodes(body io.Reader, targetUrl string, tasks chan<- Task, m *sync.Map
 					}
 				}
 			}
-			close(tasks)
 			break
 		}
 	}
+	return nil
 }
 
 func ProcessURL(targetUrl string) (*ScanResults, error) {
@@ -111,13 +111,16 @@ func ProcessURL(targetUrl string) (*ScanResults, error) {
 	if resp.StatusCode == 200 {
 		var wgWorker sync.WaitGroup
 		m := &sync.Map{}
-		parseNodes(
+		err := parseNodes(
 			resp.Body,
 			targetUrl,
-			CreateWorkers(&wgWorker),
+			createWorkers(&wgWorker),
 			m,
 		)
 		wgWorker.Wait()
+		if err != nil {
+			return nil, err
+		}
 
 		m.Range(func(key, value any) bool {
 			uniqueLinks := make(map[string]bool)

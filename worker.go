@@ -32,10 +32,11 @@ func worker(tasks <-chan Task) {
 			a = append(a, task.url)
 			task.m.Store(resp.StatusCode, a)
 		}
+		resp.Body.Close()
 	}
 }
 
-func CreateWorkers(wg *sync.WaitGroup) chan Task {
+func createWorkers(wg *sync.WaitGroup) chan Task {
 	tasks := make(chan Task, NumWorkers)
 	for i := 0; i < NumWorkers; i += 1 {
 		wg.Go(func() {
