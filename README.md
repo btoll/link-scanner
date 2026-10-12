@@ -19,6 +19,19 @@ As a CLI parameter:
 ```bash
 $ ./link-scanner -url https://go.dev/ref/mem | jq
 {
+  "filtered": {
+    "400": [
+      "#cgroup-demo",
+      "#cgroups",
+      "#cgroups-demo",
+      "#conclusion",
+      "#introduction",
+      "#references",
+      "#scope-units",
+      "#systemd",
+      "#systemd-demo"
+    ]
+  },
   "200": [
     "http://www.google.com/intl/en/policies/privacy/",
     "https://github.com/golang",
@@ -48,6 +61,8 @@ $ ./link-scanner -url https://go.dev/ref/mem | jq
   ]
 }
 ```
+
+The `filtered` map contains links that failed validation, which includes links with targets whose base URL is the same as the host.  Obviously, there isn't a need to check if that is a valid link, since, well, the only reason the tool found the link in the first place was because the page was reachable.
 
 > Note that some servers with bot detection will reject `HEAD` requests, which is what this tool is using.  In the above example, the links in the `403` and `404` lists are being blocked or rejected by sophisticated user agent detectors that often flag `HEAD` requests.
 

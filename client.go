@@ -21,17 +21,17 @@ var (
 
 	client = &http.Client{
 		Timeout: 30 * time.Second,
-		Transport: &MyRoundTripper{
+		Transport: &myRoundTripper{
 			transport: customRoundTripper,
 		},
 	}
 )
 
-type MyRoundTripper struct {
+type myRoundTripper struct {
 	transport *http.Transport
 }
 
-func (m *MyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+func (m *myRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Don't mutate the original.  This avoids potential race conditions with concurrent requests.
 	// In other words, each call to `RoundTrip` modifies its own copy of `req` when adding headers
 	// instead of all of them mutating the original Header struct.

@@ -98,7 +98,7 @@ func main() {
 		fmt.Println(string(b))
 	} else {
 		for _, target := range targets {
-			if len(target.GetFailures()) > 0 {
+			if len(target.GetFailures().GetFailures().LinkResults) > 0 {
 				os.Exit(1)
 			}
 		}
