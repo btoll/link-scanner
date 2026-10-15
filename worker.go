@@ -28,6 +28,14 @@ func worker(tasks <-chan Task, client *http.Client) {
 			statusCode = resp.StatusCode
 			resp.Body.Close()
 		}
+		if statusCode == 403 {
+			req, _ := http.NewRequest(http.MethodGet, task.resolved, nil)
+			resp, err := client.Do(req)
+			if err == nil {
+				resp.Body.Close()
+			}
+			statusCode = resp.StatusCode
+		}
 		// The original string is stored and outputted.
 		actual, loaded := task.m.LoadOrStore(statusCode, []string{task.url})
 		// TODO: This could still be subject to a race condition.

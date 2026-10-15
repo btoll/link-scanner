@@ -42,10 +42,10 @@ func (m *myRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func addHeaders(header http.Header) {
-	header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+	header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36")
 	header.Set("Accept-Language", "en-US,en;q=0.9")
 	// My custom RoundTripper likely isn't handling any decompression where it's likely the default one does.
 	// Currently, uncommenting this header will result in any empty links map.
 	//	header.Set("Accept-Encoding", "gzip, deflate, br")
-	header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	header.Set("Accept", "text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8")
 }
