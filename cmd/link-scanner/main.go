@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -71,7 +72,7 @@ func main() {
 	var wgMain sync.WaitGroup
 	for i, url := range allURLs {
 		wgMain.Go(func() {
-			target, err := linkscanner.ProcessURL(url)
+			target, err := linkscanner.ProcessURL(context.Background(), url)
 			if err != nil {
 				//				logger.Error(err.Error())
 				log.Fatal(err)
