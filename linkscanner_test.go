@@ -2,6 +2,7 @@ package linkscanner
 
 import (
 	"bytes"
+	"context"
 	"html/template"
 	"io"
 	"net/http"
@@ -79,7 +80,7 @@ func getScanResults() (*ScanResults, error) {
 		return nil, err
 	}
 	mockClient := getClient(buf.String())
-	return processURLWithClient(target, mockClient)
+	return processURLWithClient(context.Background(), target, mockClient)
 }
 
 func TestDefaultTagName(t *testing.T) {

@@ -1,5 +1,7 @@
 # link-scanner
 
+`link-scanner` will send a `HEAD` request to each link it finds in a given web page.  If a link returns a `403 Forbidden` status code, `link-scanner` will then send a `GET` request to try and make a successful connection to attempt to bypass any firewall rules.
+
 ```
 Usage of link-scanner:
   -quiet
@@ -9,6 +11,8 @@ Usage of link-scanner:
   -url string
         The URL to check for valid links.
 ```
+
+> See the fine article [On Link Scanning And systemd](https://benjamintoll.com/2026/10/15/on-link-scanning-and-systemd/) for more information.
 
 ## Examples
 

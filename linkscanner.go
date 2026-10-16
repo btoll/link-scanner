@@ -1,6 +1,7 @@
 package linkscanner
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"maps"
@@ -116,18 +117,19 @@ func parseNodes(body io.Reader, targetUrl string, tasks chan<- Task, m *LinkMaps
 	return nil
 }
 
-func ProcessURL(targetUrl string) (*ScanResults, error) {
-	return processURLWithClient(targetUrl, client)
+func ProcessURL(ctx context.Context, targetUrl string) (*ScanResults, error) {
+	return processURLWithClient(ctx, targetUrl, client)
 }
 
-func processURLWithClient(targetUrl string, client *http.Client) (*ScanResults, error) {
+func processURLWithClient(ctx context.Context, targetUrl string, client *http.Client) (*ScanResults, error) {
 	scanResults := &ScanResults{
 		Target:      targetUrl,
 		Filtered:    make(LinkResults),
 		LinkResults: make(LinkResults),
 	}
 
-	resp, err := client.Get(targetUrl)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetUrl, nil)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
