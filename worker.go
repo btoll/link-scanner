@@ -23,7 +23,7 @@ func worker(tasks <-chan Task, client *http.Client) {
 		resp, err := client.Do(req)
 		if err != nil {
 			// TODO: Let's have a meaningful error status code here.
-			statusCode = 700
+			statusCode = 400
 		} else {
 			statusCode = resp.StatusCode
 			resp.Body.Close()
